@@ -26,6 +26,9 @@ export interface Config {
     value: string
   }[]
   enableViewLog: boolean
+  autoLogin: boolean
+  loginUsername: string
+  loginPassword: string
 }
 
 export const Config: Schema<Config> = Schema.object({
@@ -52,7 +55,10 @@ export const Config: Schema<Config> = Schema.object({
       { key: '排除按创建时间', value: 'sort:created-asc' },
       { key: '排除按更新时间', value: 'sort:updated-asc' },
     ]),
-  enableViewLog: Schema.boolean().description('是否启用「查看最近日志」指令').default(false)
+  enableViewLog: Schema.boolean().description('是否启用「查看最近日志」指令').default(false),
+  autoLogin: Schema.boolean().description('是否在 auth 开启时自动登录').default(false),
+  loginUsername: Schema.string().description('登录用户名').default('admin'),
+  loginPassword: Schema.string().role('secret').description('登录密码').default(''),
 })
 
 export function apply(ctx: Context, cfg: Config) {
@@ -99,9 +105,22 @@ export function apply(ctx: Context, cfg: Config) {
         width: 1160,
         height: 740
       })
-      await page.goto(`http://127.0.0.1:${port}/market?keyword=${searchParams.join('+')}`, {
+      const url = `http://127.0.0.1:${port}/market?keyword=${searchParams.join('+')}`
+      await page.goto(url, {
         waitUntil: 'networkidle2'
       })
+      if (cfg.autoLogin && page.url() === `http://127.0.0.1:${port}/login`) {
+        const [usernameInput, passwordInput] = await page.$$('div.login-form input')
+        await usernameInput.type(cfg.loginUsername)
+        await passwordInput.type(cfg.loginPassword)
+        await Promise.all([
+          page.waitForNavigation({ timeout: 2000 }),
+          page.click('div.login-form button:nth-child(2)'),
+        ])
+        await page.goto(url, {
+          waitUntil: 'networkidle2'
+        })
+      }
       await page.addStyleTag({
         content: `
           .layout-status {
@@ -166,9 +185,22 @@ export function apply(ctx: Context, cfg: Config) {
           width: 1125,
           height: 768
         })
-        await page.goto(`http://127.0.0.1:${port}/logs`, {
+        const url = `http://127.0.0.1:${port}/logs`
+        await page.goto(url, {
           waitUntil: 'networkidle2'
         })
+        if (cfg.autoLogin && page.url() === `http://127.0.0.1:${port}/login`) {
+          const [usernameInput, passwordInput] = await page.$$('div.login-form input')
+          await usernameInput.type(cfg.loginUsername)
+          await passwordInput.type(cfg.loginPassword)
+          await Promise.all([
+            page.waitForNavigation({ timeout: 2000 }),
+            page.click('div.login-form button:nth-child(2)'),
+          ])
+          await page.goto(url, {
+            waitUntil: 'networkidle2'
+          })
+        }
 
         const shooter = await page.$('div.log-list')
         let msg: h | string
