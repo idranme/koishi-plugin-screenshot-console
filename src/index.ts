@@ -73,24 +73,20 @@ export function apply(ctx: Context, cfg: Config) {
       const elements = h.select(keyword || '', 'text, at')
       if (elements.length === 0) return '请输入搜索关键词。'
 
-      const bound: h[] = []
+      const keywords: string[] = []
       for (const v of elements) {
         if (v.type === 'at') {
           const match = await ctx.database.get('screenshot_console_bind', {
             id: `${session.platform}:${session.guildId}:${v.attrs.id}`
           })
-          if (match.length === 0) {
-            bound.push(h.text(''))
-            continue
-          }
-          bound.push(h.text('email:' + match[0].email))
+          if (match.length === 0) continue
+          keywords.push('email:' + match[0].email)
           continue
         }
-        bound.push(v)
+        keywords.push(...v.attrs.content.split(' '))
       }
 
-      const keywords = bound.toString().split(' ')
-      const searchParams = []
+      const searchParams: string[] = []
       for (const k of keywords) {
         if (!k) continue
         const mapping = cfg.searchMappings.find(m => m.key === k)
@@ -103,7 +99,7 @@ export function apply(ctx: Context, cfg: Config) {
       const page = await ctx.puppeteer.page()
       await page.setViewport({
         width: 1160,
-        height: 740
+        height: 754
       })
       const url = `http://127.0.0.1:${port}/market?keyword=${searchParams.join('+')}`
       await page.goto(url, {
@@ -127,10 +123,16 @@ export function apply(ctx: Context, cfg: Config) {
             display: none
           }
           div.package-list {
-            padding: 6px
+            padding: 7px
           }
           a.market-package button {
             display: none
+          }
+          div.package-list a:nth-child(n + 7) {
+            display: none
+          }
+          div.search-box {
+            display: none !important
           }
         `
       })
