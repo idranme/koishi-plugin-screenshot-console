@@ -54,6 +54,7 @@ export const Config: Schema<Config> = Schema.object({
       { key: '排除按下载量', value: 'sort:download-asc' },
       { key: '排除按创建时间', value: 'sort:created-asc' },
       { key: '排除按更新时间', value: 'sort:updated-asc' },
+      { key: '近期新增', value: 'created:>{seven_days_ago}' },
     ]),
   enableViewLog: Schema.boolean().description('是否启用「查看最近日志」指令').default(false),
   autoLogin: Schema.boolean().description('是否在 auth 开启时自动登录').default(false),
@@ -87,10 +88,17 @@ export function apply(ctx: Context, cfg: Config) {
       }
 
       const searchParams: string[] = []
-      for (const k of keywords) {
-        if (!k) continue
-        const mapping = cfg.searchMappings.find(m => m.key === k)
-        searchParams.push(encodeURIComponent(mapping ? mapping.value : k))
+      for (const item of keywords) {
+        if (!item) continue
+        const mapped = cfg.searchMappings.find(m => m.key === item)?.value
+        if (mapped?.includes?.('{seven_days_ago}')) {
+          const date = new Date()
+          date.setDate(date.getDate() - 7)
+          const item = mapped.replaceAll('{seven_days_ago}', date.toISOString())
+          searchParams.push(encodeURIComponent(item))
+        } else {
+          searchParams.push(encodeURIComponent(mapped ?? item))
+        }
       }
 
       const port = cfg.accessPort || ctx.server.port
