@@ -31,36 +31,39 @@ export interface Config {
   loginPassword: string
 }
 
-export const Config: Schema<Config> = Schema.object({
-  accessPort: Schema.union([
-    Schema.const(0).description('自动检测'),
-    Schema.natural().description('自定义').default(5140)
-  ]).description('访问的控制台端口').default(0),
-  searchMappings: Schema
-    .array(Schema.object({
-      key: Schema.string().description('需转换'),
-      value: Schema.string().description('转换后'),
-    }))
-    .role('table')
-    .description('「插件市场搜索」关键词映射')
-    .default([
-      { key: '综合', value: 'sort:default' },
-      { key: '按评分', value: 'sort:rating' },
-      { key: '按下载量', value: 'sort:download' },
-      { key: '按创建时间', value: 'sort:created' },
-      { key: '按更新时间', value: 'sort:updated' },
-      { key: '排除综合', value: 'sort:default-asc' },
-      { key: '排除按评分', value: 'sort:rating-asc' },
-      { key: '排除按下载量', value: 'sort:download-asc' },
-      { key: '排除按创建时间', value: 'sort:created-asc' },
-      { key: '排除按更新时间', value: 'sort:updated-asc' },
-      { key: '近期新增', value: 'created:>{seven_days_ago}' },
-    ]),
-  enableViewLog: Schema.boolean().description('是否启用「查看最近日志」指令').default(false),
-  autoLogin: Schema.boolean().description('是否在 auth 开启时自动登录').default(false),
-  loginUsername: Schema.string().description('登录用户名').default('admin'),
-  loginPassword: Schema.string().role('secret').description('登录密码').default(''),
-})
+export const Config: Schema<Config> = Schema.intersect([
+  Schema.object({
+    accessPort: Schema.union([
+      Schema.const(0).description('自动检测'),
+      Schema.natural().description('自定义').default(5140)
+    ]).description('访问的控制台端口').default(0),
+    searchMappings: Schema
+      .array(Schema.object({
+        key: Schema.string().description('需转换'),
+        value: Schema.string().description('转换后'),
+      }))
+      .role('table')
+      .description('「插件市场搜索」关键词映射')
+      .default([
+        { key: '综合', value: 'sort:default' },
+        { key: '按评分', value: 'sort:rating' },
+        { key: '按下载量', value: 'sort:download' },
+        { key: '按创建时间', value: 'sort:created' },
+        { key: '按更新时间', value: 'sort:updated' },
+        { key: '近期新增', value: 'created:>{seven_days_ago}' },
+      ]),
+    enableViewLog: Schema.boolean().description('是否启用「查看最近日志」指令').default(false),
+    autoLogin: Schema.boolean().description('是否在 auth 开启时自动登录').default(false),
+  }),
+  Schema.union([
+    Schema.object({
+      autoLogin: Schema.const(true).required(),
+      loginUsername: Schema.string().description('登录用户名').default('admin'),
+      loginPassword: Schema.string().role('secret').description('登录密码').default(''),
+    }),
+    Schema.object({}) as any
+  ])
+])
 
 export function apply(ctx: Context, cfg: Config) {
   ctx.model.extend('screenshot_console_bind', {
