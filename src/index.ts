@@ -108,10 +108,6 @@ export function apply(ctx: Context, cfg: Config) {
       if (!port) return '搜索失败。'
 
       const page = await ctx.puppeteer.page()
-      await page.setViewport({
-        width: 1160,
-        height: 754
-      })
       const url = `http://127.0.0.1:${port}/market?keyword=${searchParams.join('+')}`
       await page.goto(url, {
         waitUntil: 'networkidle2'
@@ -121,7 +117,7 @@ export function apply(ctx: Context, cfg: Config) {
         await usernameInput.type(cfg.loginUsername)
         await passwordInput.type(cfg.loginPassword)
         await Promise.all([
-          page.waitForNavigation({ timeout: 2000 }),
+          page.waitForNavigation({ timeout: 1500 }),
           page.click('div.login-form button:nth-child(2)'),
         ])
         await page.goto(url, {
@@ -131,30 +127,37 @@ export function apply(ctx: Context, cfg: Config) {
       await page.addStyleTag({
         content: `
           .layout-status {
-            display: none
+            display: none;
           }
           div.package-list {
-            padding: 7px
+            padding: 7px;
+            max-width: 736px;
           }
           a.market-package button {
-            display: none
+            display: none;
           }
           div.package-list a:nth-child(n + 7) {
-            display: none
+            display: none;
           }
           div.search-box {
-            display: none !important
+            display: none !important;
           }
         `
       })
 
-      const shooter = await page.$('div.package-list')
+      const list = await page.$('div.package-list')
       let msg: h | string
-      if (shooter) {
-        const imgBuf = await shooter.screenshot({
-          captureBeyondViewport: false
-        })
-        msg = h.image(imgBuf, 'image/png')
+      if (list) {
+        const packages = await page.$$('a.market-package')
+        if (packages.length === 1) {
+          const imgBuf = await packages[0].screenshot({})
+          msg = h.image(imgBuf, 'image/png')
+        } else {
+          const imgBuf = await list.screenshot({
+            captureBeyondViewport: false
+          })
+          msg = h.image(imgBuf, 'image/png')
+        }
       } else if (await page.$('div.k-empty')) {
         msg = '没有搜索到相关插件。'
       } else if (await page.$('div.market-error')) {
